@@ -65,14 +65,14 @@
 									 {color: '#00FF00', lineWidth: 5});
 						drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
 
-						const w = (landmarks[14].x * 1280);
-						const h = (landmarks[14].y * 720);
+						const w = (landmarks[14].x * canvasElement.width);
+						const h = (landmarks[14].y * canvasElement.height);
 
 						// we need to get this in 3d vector points
 						var vec = new THREE.Vector3();
 						var pos = new THREE.Vector3();
 
-						vec.set((w / window.innerWidth) * 2 - 1, -(h / window.innerHeight) * 2 + 1, 0.5);
+						vec.set((w / canvasElement.width) * 2 - 1, -(h / canvasElement.height) * 2 + 1, 0.5);
 						vec.unproject(glcamera);
 						vec.sub(glcamera.position).normalize();
 						var distance = -glcamera.position.z / vec.z;
