@@ -1,0 +1,119 @@
+<!DOCTYPE HTML>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+		<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+		<script src="js/three.js"></script>
+
+		<script type="module">
+			/*
+				WebGL
+			*/
+			const glcanvas = document.getElementById("glcanvas");
+			const scene = new THREE.Scene();
+			const glcamera = new THREE.PerspectiveCamera(75, glcanvas.width / glcanvas.height, 0.1, 1000);
+			//const glcamera = new THREE.OrthographicCamera(width / -2, width / 2, height / 2, height / -2, 0.1, 1000);
+
+			const renderer = new THREE.WebGLRenderer({canvas: glcanvas, alpha: true});
+			renderer.setSize(glcanvas.width, glcanvas.height);
+			document.body.appendChild(renderer.domElement);
+
+			const geometry = new THREE.BoxGeometry();
+			const material = new THREE.MeshBasicMaterial({color: 0x00ff00});
+			const cube = new THREE.Mesh(geometry, material);
+			scene.add(cube);
+
+			glcamera.position.z = 5;
+
+			function toScreenPosition(obj, camera) {
+				var vector = new THREE.Vector3();
+
+				var widthHalf = renderer.context.canvas.width * 0.5;
+				var heightHalf = renderer.context.canvas.height * 0.5;
+
+				obj.updateMatrixWorld();
+				vector.setFromMatrixPosition(obj.matrixWorld);
+				vector.project(camera);
+
+				vector.x = (vector.x * widthHalf) + widthHalf;
+				vector.y = -(vector.y * heightHalf) + heightHalf;
+
+				return { 
+					x: vector.x,
+					y: vector.y
+				};
+			};
+
+			/*
+				MediaPipe
+			*/
+			const video = document.getElementsByClassName('input_video')[0];
+			const canvasElement = document.getElementsByClassName('output_canvas')[0];
+			const canvasCtx = canvasElement.getContext('2d');
+
+			function onResults(results) {
+				canvasCtx.save();
+				canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+				canvasCtx.drawImage(
+					results.image, 0, 0, canvasElement.width, canvasElement.height);
+				if (results.multiHandLandmarks) {
+					for (const landmarks of results.multiHandLandmarks) {
+						drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+									 {color: '#00FF00', lineWidth: 5});
+						drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+
+						const w = (landmarks[14].x * 1280);
+						const h = (landmarks[14].y * 720);
+
+						// we need to get this in 3d vector points
+						var vec = new THREE.Vector3();
+						var pos = new THREE.Vector3();
+
+						vec.set((w / window.innerWidth) * 2 - 1, -(h / window.innerHeight) * 2 + 1, 0.5);
+						vec.unproject(glcamera);
+						vec.sub(glcamera.position).normalize();
+						var distance = -glcamera.position.z / vec.z;
+						pos.copy(glcamera.position).add(vec.multiplyScalar(distance));
+						cube.position.set(pos.x, pos.y, pos.z);
+					}
+				}
+				canvasCtx.restore();
+
+				//cube.rotation.x += 0.01;
+				//cube.rotation.y += 0.01;
+
+				renderer.render(scene, glcamera);
+			}
+
+			const hands = new Hands({locateFile: (file) => {
+				return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+			}});
+			hands.setOptions({
+				maxNumHands: 1,
+				minDetectionConfidence: 0.5,
+				minTrackingConfidence: 0.5
+			});
+			hands.onResults(onResults);
+
+			const camera = new Camera(video, {
+				onFrame: async () => {
+				await hands.send({image: video});
+				},
+				width: 1280,
+				height: 720
+			});
+			camera.start();
+		</script>
+	</head>
+	<body>
+		<div id="container" style="position: relative;">
+			<!-- <video autoplay="true" class="input_video" id="input_video" width="1280px" height="720px" style="position: absolute; left: 0; top: 0; z-index: 0;"></video> -->
+			<video hidden class="input_video" id="input_video" width="1280px" height="720px" style="position: absolute; left: 0; top: 0; z-index: 0;"></video>
+			<canvas class="output_canvas" width="1280px" height="720px" style="position: absolute; left: 0; top: 0; z-index: 0;"></canvas>
+			<canvas id="glcanvas" width="1280px" height="720px" style="position: absolute; left: 0; top: 0; z-index: 1;"></canvas>
+		</div>
+	</body>
+</html>
