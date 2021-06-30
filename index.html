@@ -50,14 +50,14 @@
 			function calibrate(landmarks) {
 				if (needCalibrate) {
 					cube.rotation.set(0, 0, 0);
-					openPalm = (radian / 2) / (landmarks[4].x - landmarks[20].x);
+					openPalm = (radian / 2) / (landmarks[5].x - landmarks[17].x);
 					needCalibrate = false;
 				};
 			};
 
 			var rotation = new THREE.Euler(0.0, 0.0, 0.0, "XYZ");
 			function calcRot(landmarks) {
-				rotation.y = openPalm * (landmarks[4].x - landmarks[20].x);
+				rotation.y = openPalm * (landmarks[5].x - landmarks[17].x);
 
 				// Degree of box
 				//console.log(rotation.y * (180/Math.PI));
